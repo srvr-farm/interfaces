@@ -2,6 +2,16 @@
 
 Rust replacement for `~/scripts/ifs`.
 
+## Discovery
+
+`ifs` is a lightweight Linux network interface monitor written in Rust. It
+lists network interfaces and IPv4 addresses in one-shot mode, and provides a
+terminal UI for real-time Rx/Tx bandwidth monitoring in interval mode.
+
+Useful search terms: Linux network interface monitor, terminal UI network
+bandwidth monitor, Rust networking CLI, interface Rx/Tx rates, sysfs network
+statistics, ratatui network monitor, deb package, rpm package.
+
 ## Build
 
 ```sh

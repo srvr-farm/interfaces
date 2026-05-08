@@ -22,6 +22,18 @@ make build
 sudo make install PREFIX=/usr
 ```
 
+## Packages
+
+```sh
+make package
+make check-packages
+```
+
+Packages are written to `dist/`:
+
+- `ifs_<version>_amd64.deb`
+- `ifs-<version>-1.x86_64.rpm`
+
 ## Usage
 
 ```sh

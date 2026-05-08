@@ -4,7 +4,6 @@ when:
 clone:
   - name: git
     image: woodpeckerci/plugin-git:2.9.0
-    network_mode: woodpecker-ci_default
     settings:
       attempts: 10
       backoff: 10s
@@ -14,14 +13,12 @@ clone:
 steps:
   - name: check
     image: rust:1-bookworm
-    network_mode: woodpecker-ci_default
     commands:
       - rustup component add rustfmt clippy
       - make check
 
   - name: build-release-binary
     image: rust:1-bookworm
-    network_mode: woodpecker-ci_default
     depends_on:
       - check
     commands:
@@ -65,7 +62,6 @@ steps:
 
   - name: create-release-tag
     image: rust:1-bookworm
-    network_mode: woodpecker-ci_default
     depends_on:
       - build-release-binary
     environment:
@@ -103,7 +99,6 @@ steps:
 
   - name: publish-release
     image: woodpeckerci/plugin-release
-    network_mode: woodpecker-ci_default
     depends_on:
       - build-release-binary
     settings:

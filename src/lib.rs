@@ -6,6 +6,7 @@ pub mod tui;
 
 use crate::cli::{Cli, Mode};
 use crate::interfaces::{discover_interfaces, display_rows, InterfaceInfo};
+use crate::stats::RateUnit;
 use anyhow::anyhow;
 use clap::Parser;
 
@@ -14,12 +15,15 @@ pub fn run() -> anyhow::Result<()> {
 }
 
 pub fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
-    match cli.mode().map_err(|error| anyhow!(error))? {
+    let mode = cli.mode().map_err(|error| anyhow!(error))?;
+    let rate_unit = RateUnit::from_bits(cli.bits);
+
+    match mode {
         Mode::Once => {
             print!("{}", one_shot_output(cli.all, cli.no_headers)?);
             Ok(())
         }
-        Mode::Monitor(interval) => tui::run_monitor(cli.all, interval),
+        Mode::Monitor(interval) => tui::run_monitor(cli.all, interval, rate_unit),
     }
 }
 

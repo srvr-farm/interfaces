@@ -1,6 +1,6 @@
 use crate::interfaces::{discover_interfaces, display_rows, InterfaceInfo};
 use crate::render::{self, MonitorRow};
-use crate::stats::{calculate_rates, read_counters, Counters};
+use crate::stats::{calculate_rates, read_counters, Counters, RateUnit};
 use anyhow::Context;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 use crossterm::execute;
@@ -90,7 +90,7 @@ impl MonitorSampler {
     }
 }
 
-pub fn run_monitor(all: bool, interval: Duration) -> anyhow::Result<()> {
+pub fn run_monitor(all: bool, interval: Duration, rate_unit: RateUnit) -> anyhow::Result<()> {
     let mut stdout = io::stdout();
     enable_raw_mode().context("enable raw mode")?;
     execute!(stdout, EnterAlternateScreen).context("enter alternate screen")?;
@@ -105,7 +105,7 @@ pub fn run_monitor(all: bool, interval: Duration) -> anyhow::Result<()> {
 
     loop {
         terminal
-            .draw(|frame| render::draw(frame, &rows, interval))
+            .draw(|frame| render::draw(frame, &rows, interval, rate_unit))
             .context("draw terminal frame")?;
 
         if event::poll(interval).context("poll terminal events")? {

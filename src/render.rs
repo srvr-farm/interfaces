@@ -1,5 +1,5 @@
 use crate::interfaces::DisplayRow;
-use crate::stats::format_rate;
+use crate::stats::{format_rate, RateUnit};
 use ratatui::layout::{Constraint, Direction, Layout};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
@@ -50,7 +50,7 @@ pub fn format_once(rows: &[DisplayRow], no_headers: bool) -> String {
     output
 }
 
-pub fn format_monitor_text(rows: &[MonitorRow]) -> String {
+pub fn format_monitor_text(rows: &[MonitorRow], rate_unit: RateUnit) -> String {
     let mut output = String::new();
     writeln!(
         output,
@@ -70,8 +70,8 @@ pub fn format_monitor_text(rows: &[MonitorRow]) -> String {
             "{:<INTERFACE_WIDTH$} {:<IP_WIDTH$} {:<RATE_WIDTH$} {}",
             row.display.name_column,
             row.display.ip_column,
-            format_rate(rx_rate),
-            format_rate(tx_rate)
+            format_rate(rx_rate, rate_unit),
+            format_rate(tx_rate, rate_unit)
         )
         .unwrap();
     }
@@ -79,7 +79,7 @@ pub fn format_monitor_text(rows: &[MonitorRow]) -> String {
     output
 }
 
-pub fn draw(frame: &mut Frame<'_>, rows: &[MonitorRow], interval: Duration) {
+pub fn draw(frame: &mut Frame<'_>, rows: &[MonitorRow], interval: Duration, rate_unit: RateUnit) {
     let root = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(3), Constraint::Min(3)])
@@ -98,7 +98,7 @@ pub fn draw(frame: &mut Frame<'_>, rows: &[MonitorRow], interval: Duration) {
     frame.render_widget(title, root[0]);
 
     frame.render_widget(
-        Paragraph::new(format_monitor_text(rows))
+        Paragraph::new(format_monitor_text(rows, rate_unit))
             .block(Block::default().title("Interfaces").borders(Borders::ALL))
             .wrap(Wrap { trim: false }),
         root[1],
@@ -117,6 +117,7 @@ fn trim_float(value: f64) -> String {
 mod tests {
     use super::{format_monitor_text, format_once, MonitorRow};
     use crate::interfaces::DisplayRow;
+    use crate::stats::RateUnit;
 
     fn row(interface_name: &str, name_column: &str, ip_column: &str, primary: bool) -> DisplayRow {
         DisplayRow {
@@ -163,8 +164,22 @@ mod tests {
         ];
 
         assert_eq!(
-            format_monitor_text(&rows),
+            format_monitor_text(&rows, RateUnit::Bytes),
             "INTERFACE        IP              RX          TX\neth0             10.0.0.10       1.5 KiB/s   42 B/s\n                 10.0.0.11       --          --\n"
+        );
+    }
+
+    #[test]
+    fn formats_monitor_output_as_network_bits_when_requested() {
+        let rows = vec![MonitorRow::new(
+            row("eth0", "eth0", "10.0.0.10", true),
+            Some(1536.0),
+            Some(125_000.0),
+        )];
+
+        assert_eq!(
+            format_monitor_text(&rows, RateUnit::Bits),
+            "INTERFACE        IP              RX          TX\neth0             10.0.0.10       12.3 Kb/s   1.0 Mb/s\n"
         );
     }
 }

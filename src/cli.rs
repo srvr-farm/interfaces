@@ -12,6 +12,8 @@ pub enum Mode {
 pub struct Cli {
     #[arg(long)]
     pub all: bool,
+    #[arg(long)]
+    pub bits: bool,
     #[arg(short = 'h', long)]
     pub no_headers: bool,
     #[arg(short = 'i', long = "interval", value_name = "SECONDS", num_args = 0..=1, default_missing_value = "1")]
@@ -70,6 +72,7 @@ mod tests {
 
         assert_eq!(cli.mode().unwrap(), Mode::Once);
         assert!(!cli.all);
+        assert!(!cli.bits);
         assert!(!cli.no_headers);
     }
 
@@ -79,6 +82,13 @@ mod tests {
 
         assert!(cli.all);
         assert!(cli.no_headers);
+    }
+
+    #[test]
+    fn parses_bits_flag() {
+        let cli = Cli::try_parse_from(["ifs", "--bits"]).unwrap();
+
+        assert!(cli.bits);
     }
 
     #[test]

@@ -15,6 +15,22 @@ pub struct Rates {
     pub tx_bytes_per_sec: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RateUnit {
+    Bytes,
+    Bits,
+}
+
+impl RateUnit {
+    pub fn from_bits(bits: bool) -> Self {
+        if bits {
+            Self::Bits
+        } else {
+            Self::Bytes
+        }
+    }
+}
+
 pub fn read_counters(sys_class_net: &Path, interface: &str) -> io::Result<Option<Counters>> {
     let stats_dir = sys_class_net.join(interface).join("statistics");
     let rx_path = stats_dir.join("rx_bytes");
@@ -45,11 +61,18 @@ pub fn calculate_rates(previous: Counters, current: Counters, elapsed: Duration)
     })
 }
 
-pub fn format_rate(rate: Option<f64>) -> String {
+pub fn format_rate(rate: Option<f64>, unit: RateUnit) -> String {
     let Some(rate) = rate else {
         return "--".to_string();
     };
 
+    match unit {
+        RateUnit::Bytes => format_byte_rate(rate),
+        RateUnit::Bits => format_bit_rate(rate * 8.0),
+    }
+}
+
+fn format_byte_rate(rate: f64) -> String {
     if rate < 1024.0 {
         format!("{} B/s", rate.round() as u64)
     } else if rate < 1024.0 * 1024.0 {
@@ -58,6 +81,18 @@ pub fn format_rate(rate: Option<f64>) -> String {
         format!("{:.1} MiB/s", rate / 1024.0 / 1024.0)
     } else {
         format!("{:.1} GiB/s", rate / 1024.0 / 1024.0 / 1024.0)
+    }
+}
+
+fn format_bit_rate(rate: f64) -> String {
+    if rate < 1000.0 {
+        format!("{} b/s", rate.round() as u64)
+    } else if rate < 1000.0 * 1000.0 {
+        format!("{:.1} Kb/s", rate / 1000.0)
+    } else if rate < 1000.0 * 1000.0 * 1000.0 {
+        format!("{:.1} Mb/s", rate / 1000.0 / 1000.0)
+    } else {
+        format!("{:.1} Gb/s", rate / 1000.0 / 1000.0 / 1000.0)
     }
 }
 
@@ -73,7 +108,7 @@ fn read_counter(path: &Path) -> io::Result<u64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{calculate_rates, format_rate, read_counters, Counters};
+    use super::{calculate_rates, format_rate, read_counters, Counters, RateUnit};
     use std::fs;
     use std::time::Duration;
     use tempfile::tempdir;
@@ -140,9 +175,21 @@ mod tests {
 
     #[test]
     fn formats_human_readable_rates() {
-        assert_eq!(format_rate(None), "--");
-        assert_eq!(format_rate(Some(42.0)), "42 B/s");
-        assert_eq!(format_rate(Some(1536.0)), "1.5 KiB/s");
-        assert_eq!(format_rate(Some(2.0 * 1024.0 * 1024.0)), "2.0 MiB/s");
+        assert_eq!(format_rate(None, RateUnit::Bytes), "--");
+        assert_eq!(format_rate(Some(42.0), RateUnit::Bytes), "42 B/s");
+        assert_eq!(format_rate(Some(1536.0), RateUnit::Bytes), "1.5 KiB/s");
+        assert_eq!(
+            format_rate(Some(2.0 * 1024.0 * 1024.0), RateUnit::Bytes),
+            "2.0 MiB/s"
+        );
+    }
+
+    #[test]
+    fn formats_bit_rates_with_network_units() {
+        assert_eq!(format_rate(None, RateUnit::Bits), "--");
+        assert_eq!(format_rate(Some(42.0), RateUnit::Bits), "336 b/s");
+        assert_eq!(format_rate(Some(125.0), RateUnit::Bits), "1.0 Kb/s");
+        assert_eq!(format_rate(Some(1536.0), RateUnit::Bits), "12.3 Kb/s");
+        assert_eq!(format_rate(Some(125_000.0), RateUnit::Bits), "1.0 Mb/s");
     }
 }

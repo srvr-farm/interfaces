@@ -9,6 +9,7 @@ use crate::interfaces::{discover_interfaces, display_rows, InterfaceInfo};
 use crate::stats::RateUnit;
 use anyhow::anyhow;
 use clap::Parser;
+use std::io::{self, IsTerminal};
 
 pub fn run() -> anyhow::Result<()> {
     run_with_cli(Cli::parse())
@@ -20,19 +21,23 @@ pub fn run_with_cli(cli: Cli) -> anyhow::Result<()> {
 
     match mode {
         Mode::Once => {
-            print!("{}", one_shot_output(cli.all, cli.no_headers)?);
+            print!(
+                "{}",
+                one_shot_output(cli.all, cli.no_headers, io::stdout().is_terminal())?
+            );
             Ok(())
         }
         Mode::Monitor(interval) => tui::run_monitor(cli.all, interval, rate_unit),
     }
 }
 
-fn one_shot_output(all: bool, no_headers: bool) -> anyhow::Result<String> {
+fn one_shot_output(all: bool, no_headers: bool, color: bool) -> anyhow::Result<String> {
     let interfaces = discover_interfaces()?;
     Ok(one_shot_output_from_interfaces(
         &interfaces,
         all,
         no_headers,
+        color,
     ))
 }
 
@@ -40,9 +45,14 @@ fn one_shot_output_from_interfaces(
     interfaces: &[InterfaceInfo],
     all: bool,
     no_headers: bool,
+    color: bool,
 ) -> String {
     let rows = display_rows(interfaces, all);
-    render::format_once(&rows, no_headers)
+    if color {
+        render::format_once_colored(&rows, no_headers)
+    } else {
+        render::format_once(&rows, no_headers)
+    }
 }
 
 #[cfg(test)]
@@ -59,7 +69,7 @@ mod tests {
             vec![Ipv4Addr::new(10, 0, 0, 10)],
         )];
 
-        let output = one_shot_output_from_interfaces(&interfaces, false, false);
+        let output = one_shot_output_from_interfaces(&interfaces, false, false, false);
 
         assert_eq!(output, "INTERFACE        IP\neth0             10.0.0.10\n");
         assert!(!output.contains("RX"));
